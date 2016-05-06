@@ -1,8 +1,15 @@
 var mainMap;
 var allMarkers = [];
+var userMarker;
+var directionsService;
+var directionsDisplay;
 
 
 function initMap() {
+
+	directionsService = new google.maps.DirectionsService;
+ 	directionsDisplay = new google.maps.DirectionsRenderer;
+
 
 	// Get a reference to the map container (div)
 	var mapContainer = document.querySelector('#map-container');
@@ -19,6 +26,8 @@ function initMap() {
 	// Create a new Google map
 	mainMap = new google.maps.Map(mapContainer, options);
 
+	directionsDisplay.setMap(mainMap);
+
 	// Now we're ready to show the store markers
 	placeStoreMarkers();
 
@@ -33,13 +42,13 @@ function placeStoreMarkers() {
 	var locations = [
 		{
 			title: "Hataitai Shop", 
-			lat: -41.293679, 
-			lng: 174.778976
+			lat: -41.304199, 
+			lng: 174.794832
 		},
 		{
 			title: "Petone Shop",
-			lat: -41.290512, 
-			lng: 174.778837
+			lat: -41.224220, 
+			lng: 174.882146
 		}
 	];
 
@@ -151,6 +160,67 @@ function getUserLocation() {
 		// Ask for the user location
 		navigator.geolocation.getCurrentPosition(function(position){
 			console.log(position);
+
+		// Create a marker for the user
+		userMarker = new google.maps.Marker({
+			map: mainMap,
+			position: {
+				lat: position.coords.latitude,
+				lng: position.coords.longitude
+			},
+			icon: 'http://placehold.it/20x30/f06d06'
+
+		});
+
+		// Place the marker where the user is
+		mainMap.panTo({
+			lat: position.coords.latitude,
+			lng: position.coords.longitude
+		});
+
+			// Work out the closet shop
+		var userLocation = new google.maps.LatLng({
+			lat: position.coords.latitude,
+			lng: position.coords.longitude
+		});
+
+		var closestDistance = 999999999999;
+		var closestMarker;
+
+		// Loop over all the locations
+		for( var i=0; i<allMarkers.length; i++ ) {
+
+			//Save a marker in a variable 
+			var marker = allMarkers[i];
+
+			var markerLocation = new google.maps.LatLng({
+				lat: marker.getPosition().lat(),
+				lng: marker.getPosition().lng()
+			});
+
+			// Get distance
+			var distance = google.maps.geometry.spherical.computeDistanceBetween(userLocation, markerLocation);
+
+			// Is this marker closer than the closest one so far?
+			if( distance < closestDistance ) {
+
+				// This is the new closest store
+				closestDistance = distance;
+				closestMarker = marker;
+
+
+			}
+
+
+		}
+
+		console.log(closestMarker);
+
+		calculateAndDisplayRoute(closestMarker);
+
+
+	
+
 		});
 
 	}
@@ -158,6 +228,36 @@ function getUserLocation() {
 
 }
 
+function calculateAndDisplayRoute(closestMarker) {
+
+	var destination = new google.maps.LatLng({
+		lat: closestMarker.getPosition().lat(),
+		lng: closestMarker.getPosition().lng()
+	});
+
+	var origin = new google.maps.LatLng({
+		lat: userMarker.getPosition().lat(),
+		lng: userMarker.getPosition().lng()
+	});
+
+	var options = {
+		travelMode: google.maps.TravelMode.DRIVING,
+		origin: origin,
+		destination: destination
+	};
+
+	directionsService.route(options, function(response, status){
+
+		if (status === google.maps.DirectionsStatus.OK) {
+      directionsDisplay.setDirections(response);
+    } else {
+      window.alert('Directions request failed due to ' + status);
+    }
+
+
+	});
+
+}
 
 
 
